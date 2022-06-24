@@ -3,6 +3,8 @@ import os
 
 import torch.utils.data as data
 
+from segmentation_3d.config.mode import DataMode
+
 
 class NUCMMLoader(data.Dataset):
     
@@ -24,3 +26,10 @@ def get_data_loaders(config):
     eval_label = sorted(glob.glob(os.path.join(path, "Label", "val", "*.h5")))
     
     
+    return {
+        DataMode.train: data.DataLoader(
+            NUCMMLoader(),
+        ),
+        DataMode.eval: data.DataLoader(
+        )
+    }
