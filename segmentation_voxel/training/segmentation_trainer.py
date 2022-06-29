@@ -2,9 +2,9 @@ from msilib import AMD64
 import torch
 from tqdm import tqdm
 
-from segmentation_3d.config.config import Config
-from segmentation_3d.config.mode import DataMode
-from segmentation_3d.data.dataset_nucmm import get_data_loaders
+from segmentation_voxel.config.config import Config
+from segmentation_voxel.config.mode import DataMode
+from segmentation_voxel.data.dataset_nucmm import get_data_loaders
 
 
 class SegmentationTrainer:

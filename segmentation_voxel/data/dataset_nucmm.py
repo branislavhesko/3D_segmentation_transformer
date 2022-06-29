@@ -3,7 +3,7 @@ import os
 
 import torch.utils.data as data
 
-from segmentation_3d.config.mode import DataMode
+from segmentation_voxel.config.mode import DataMode
 
 
 class NUCMMLoader(data.Dataset):

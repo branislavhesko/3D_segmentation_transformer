@@ -1,6 +1,6 @@
 import dataclasses
 
-from segmentation_3d.config.mode import DataMode
+from segmentation_voxel.config.mode import DataMode
 
 
 @dataclasses.dataclass()
