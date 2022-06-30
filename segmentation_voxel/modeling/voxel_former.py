@@ -1,3 +1,6 @@
+from math import sqrt
+from turtle import forward
+
 import einops
 import torch
 import torch.nn as nn
@@ -38,16 +41,30 @@ class ConvBatchNormRelu(nn.Sequential):
 
 
 class MLP(nn.Sequential):
-    def __init__(self):
-        pass
+    def __init__(self, embed_size, expansion=4):
+        super().__init__(
+            *[
+                nn.Linear(embed_size, expansion * embed_size),
+                nn.GELU(),
+                nn.Linear(expansion * embed_size, embed_size),
+            ]
+        )
+        
+
+class ResidualAdd(nn.Module):
     
+    def __init__(self, blocks):
+        self.blocks = blocks
+        super().__init__()
+        
+    def forward(self, x):
+        return x + self.blocks(x)
+
     
 class MultiHeadAttention(torch.nn.Module):
     def __init__(self, embed_size, num_heads, attention_store=None):
         super().__init__()
-        self.queries_projection = nn.Linear(embed_size, embed_size)
-        self.values_projection = nn.Linear(embed_size, embed_size)
-        self.keys_projection = nn.Linear(embed_size, embed_size)
+        self.projection = nn.Linear(embed_size, embed_size * 3)
         self.final_projection = nn.Linear(embed_size, embed_size)
         self.embed_size = embed_size
         self.num_heads = num_heads
@@ -55,9 +72,9 @@ class MultiHeadAttention(torch.nn.Module):
 
     def forward(self, x):
         assert len(x.shape) == 3
-        keys = self.keys_projection(x)
-        values = self.values_projection(x)
-        queries = self.queries_projection(x)
+        qkv = self.projection(x)
+        
+        queries, keys, values = qkv.chunk(3, dim=2)
         keys = einops.rearrange(keys, "b n (h e) -> b n h e", h=self.num_heads)
         queries = einops.rearrange(queries, "b n (h e) -> b n h e", h=self.num_heads)
         values = einops.rearrange(values, "b n (h e) -> b n h e", h=self.num_heads)

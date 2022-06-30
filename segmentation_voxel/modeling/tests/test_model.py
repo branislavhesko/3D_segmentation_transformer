@@ -1,5 +1,6 @@
 import pytest
-from segmentation_voxel.modeling.voxel_former import ConvBatchNormRelu, VoxelEmbedding
+from segmentation_voxel.modeling.voxel_former import (
+    ConvBatchNormRelu, MLP, MultiHeadAttention, ResidualAdd, VoxelEmbedding)
 import torch
 
 
@@ -29,3 +30,33 @@ class TestModel:
         op = ConvBatchNormRelu(in_channels, out_channels)
         out = op(inputs)
         assert out.shape == (inputs.shape[0], out_channels, inputs.shape[2], inputs.shape[3], inputs.shape[4])
+        
+    @pytest.mark.parametrize("inputs, embed_dim, num_heads", [
+        (torch.rand(2, 8, 128), 128, 8),
+        (torch.rand(2, 64, 256), 256, 8),
+        (torch.rand(2, 256, 96), 96, 8),
+    ])
+    def test_multi_head_attention(self, inputs, embed_dim, num_heads):
+        op = MultiHeadAttention(embed_size=embed_dim, num_heads=num_heads)
+        output = op(inputs)
+        assert output.shape == inputs.shape
+        
+    @pytest.mark.parametrize("inputs", [
+        torch.rand(2, 8, 128),
+        torch.rand(4, 16, 32),
+        torch.rand(8, 32, 64),
+    ])
+    def test_mlp(self, inputs):
+        op = MLP(embed_size=inputs.shape[2])
+        output = op(inputs)
+        assert output.shape == inputs.shape
+        
+    @pytest.mark.parametrize("inputs", [
+        (1, ),
+        (2, ),
+        (torch.tensor([10]))            
+    ])
+    def test_residual_add(self, inputs):
+        op = ResidualAdd(lambda x: x)
+        output = op(inputs)
+        assert output == 2 * inputs
