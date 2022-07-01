@@ -1,6 +1,6 @@
 import pytest
 from segmentation_voxel.modeling.voxel_former import (
-    ConvBatchNormRelu, MLP, MultiHeadAttention, ResidualAdd, VoxelEmbedding)
+    ConvBatchNormRelu, PreNorm, MLP, MultiHeadAttention, ResidualAdd, VoxelEmbedding)
 import torch
 
 
@@ -60,3 +60,13 @@ class TestModel:
         op = ResidualAdd(lambda x: x)
         output = op(inputs)
         assert output == 2 * inputs
+
+    @pytest.mark.parametrize("inputs, transform", [
+        (torch.rand(2, 8, 128), torch.nn.Conv1d(8, 8, 1)),
+        (torch.rand(2, 12, 128), lambda x: x),
+        (torch.rand(2, 16, 128), torch.nn.Linear(128, 128)),
+    ])
+    def test_pre_norm(self, inputs, transform):
+        op = PreNorm(block=transform, dim=inputs.shape[2])
+        output = op(inputs)
+        assert output.shape == inputs.shape
