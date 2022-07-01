@@ -1,6 +1,6 @@
 import pytest
 from segmentation_voxel.modeling.voxel_former import (
-    ConvBatchNormRelu, PreNorm, MLP, MultiHeadAttention, ResidualAdd, VoxelEmbedding)
+    ConvBatchNormRelu, DeconvLayer, PreNorm, MLP, MultiHeadAttention, ResidualAdd, TransformerEncoderLayer, VoxelEmbedding)
 import torch
 
 
@@ -70,3 +70,21 @@ class TestModel:
         op = PreNorm(block=transform, dim=inputs.shape[2])
         output = op(inputs)
         assert output.shape == inputs.shape
+
+    @pytest.mark.parametrize("inputs, embed_dim, num_heads, dropout_probability", [
+        (torch.rand(2, 197, 96), 96, 8, 0.),
+        (torch.rand(2, 7, 96), 96, 8, 0.5),
+        (torch.rand(2, 197, 128), 128, 8, 0.2),
+    ])
+    def test_transformer_encoder_layer(self, inputs, embed_dim, num_heads, dropout_probability):
+        layer = TransformerEncoderLayer(embed_dim, num_heads, dropout_probability)
+        out = layer(inputs)
+        assert out.shape == inputs.shape
+
+    @pytest.mark.parametrize("inputs, stride, kernel_size", [
+        (torch.rand(2, 3, 16, 16, 16), 2, 2)
+    ])
+    def test_deconvolution(self, inputs, stride, kernel_size):
+        op = DeconvLayer(inputs.shape[1], inputs.shape[1], stride=stride, kernel_size=kernel_size)
+        out = op(inputs)
+        assert out.shape == (inputs.shape[0], inputs.shape[1], inputs.shape[2] * stride, inputs.shape[3] * stride, inputs.shape[4] * stride)

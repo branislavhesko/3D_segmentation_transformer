@@ -1,5 +1,4 @@
 from math import sqrt
-from turtle import forward
 
 import einops
 import torch
@@ -20,6 +19,15 @@ class VoxelEmbedding(nn.Module):
         feats = einops.rearrange(feats, "b c e-> b e c")
         return self.linear(feats)
     
+
+class DeconvLayer(nn.Sequential):
+    
+    def __init__(self, in_features, out_features, kernel_size, stride=2, use_conv=True) -> None:
+        super().__init__()
+        self.layers = [nn.ConvTranspose3d(in_features, out_features, kernel_size, stride)]
+        if use_conv:
+            self.layers.append(ConvBatchNormRelu(in_features, in_features, kernel_size=3, stride=1, padding=1))
+        super().__init__(*self.layers)
     
 class ConvBatchNormRelu(nn.Sequential):
     def __init__(
@@ -56,8 +64,8 @@ class MLP(nn.Sequential):
 class ResidualAdd(nn.Module):
     
     def __init__(self, blocks):
-        self.blocks = blocks
         super().__init__()
+        self.blocks = blocks
         
     def forward(self, x):
         return x + self.blocks(x)
@@ -100,20 +108,15 @@ class MultiHeadAttention(torch.nn.Module):
     
 
 class TransformerEncoderLayer(nn.Module):
-    def __init__(self, embed_size, num_heads, ):
+    def __init__(self, embed_size, num_heads, dropout_probability=0.1):
         super().__init__()
-        self.attention = MultiHeadAttention(embed_size, num_heads)
-        self.feed_forward = MLP(embed_size)
-        self.residual_add = ResidualAdd(nn.Sequential(
-            ConvBatchNormRelu(embed_size, embed_size, kernel_size=3, stride=1, padding=1),
-            ConvBatchNormRelu(embed_size, embed_size, kernel_size=3, stride=1, padding=1),
-        ))
+        self.attention = ResidualAdd(PreNorm(
+            MultiHeadAttention(embed_size, num_heads, dropout_probability), dim=embed_size))
+        self.feed_forward = ResidualAdd(PreNorm(MLP(embed_size), dim=embed_size))
+
         
     def forward(self, x):
-        if self.attention_store is not None:
-            self.attention_store.append(x.detach().cpu())
         out = self.attention(x)
-        out = self.residual_add(out)
         out = self.feed_forward(out)
         return out + x
 
