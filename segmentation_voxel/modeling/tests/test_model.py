@@ -1,6 +1,15 @@
 import pytest
 from segmentation_voxel.modeling.voxel_former import (
-    ConvBatchNormRelu, DeconvLayer, PreNorm, MLP, MultiHeadAttention, ResidualAdd, TransformerEncoderLayer, VoxelEmbedding)
+    ConvBatchNormRelu, 
+    DeconvLayer, 
+    PreNorm, 
+    MLP, 
+    MultiHeadAttention, 
+    ResidualAdd, 
+    TransformerEncoderLayer, 
+    VoxelEmbedding, 
+    SegmentationTransformer3D
+)
 import torch
 
 
@@ -88,3 +97,10 @@ class TestModel:
         op = DeconvLayer(inputs.shape[1], inputs.shape[1], stride=stride, kernel_size=kernel_size)
         out = op(inputs)
         assert out.shape == (inputs.shape[0], inputs.shape[1], inputs.shape[2] * stride, inputs.shape[3] * stride, inputs.shape[4] * stride)
+
+    @pytest.mark.parametrize("inputs", [
+        (torch.rand(2, 3, 128, 128, 128)),
+    ])
+    def test_segmentation_transformer_3d_inference(self, inputs):
+        out = SegmentationTransformer3D(192, 8, 3, 64, 8, 16 ** 3, 0.)(inputs)
+        assert isinstance(out, torch.Tensor)

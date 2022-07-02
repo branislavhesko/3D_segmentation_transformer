@@ -123,8 +123,16 @@ class TransformerEncoderLayer(nn.Module):
 
 class SegmentationTransformer3D(nn.Module):
     
-    def __init__(self) -> None:
-        pass
-    
-    def forward(self, x):
-        pass
+    def __init__(self, embed_size, num_heads, input_channels, channels, patch_size, input_shape, dropout) -> None:
+        super().__init__()
+        self.encoder = nn.ModuleList([TransformerEncoderLayer(embed_size, num_heads) for _ in range(12)])
+        self.positional_encoding = nn.Parameter(torch.rand(1, input_shape, embed_size))
+        self.embedding = VoxelEmbedding(input_channels, embed_size, stride=patch_size)
+        self.conv1_block = ConvBatchNormRelu(input_channels, input_channels, kernel_size=3, stride=1, padding=1)
+        
+    def forward(self, volume):
+        embedding = self.embedding(volume)
+        
+        for encoder in self.encoder:
+            embedding = encoder(embedding + self.positional_encoding)
+        return embedding
