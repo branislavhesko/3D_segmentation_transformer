@@ -1,6 +1,7 @@
 import pytest
 from segmentation_voxel.modeling.voxel_former import (
-    ConvBatchNormRelu, 
+    ConvBatchNormRelu,
+    Decoder, 
     DeconvLayer, 
     PreNorm, 
     MLP, 
@@ -98,9 +99,37 @@ class TestModel:
         out = op(inputs)
         assert out.shape == (inputs.shape[0], inputs.shape[1], inputs.shape[2] * stride, inputs.shape[3] * stride, inputs.shape[4] * stride)
 
-    @pytest.mark.parametrize("inputs", [
-        (torch.rand(2, 3, 128, 128, 128)),
+    @pytest.mark.parametrize("inputs, num_classes, num_heads, embed_dim, device", [
+        (torch.rand(2, 3, 64, 64, 64), 2, 8, 768, "cpu"),
+        (torch.rand(2, 3, 64, 64, 64), 2, 16, 768, "cuda"),
+        (torch.rand(2, 4, 32, 32, 32), 2, 4, 768, "cpu"),
+        (torch.rand(2, 4, 96, 96, 96), 2, 8, 96, "cuda"),
+        (torch.rand(2, 3, 128, 128, 128), 2, 16, 96, "cpu"),
+        (torch.rand(2, 3, 64, 64, 64), 2, 4, 256, "cuda"),
+        (torch.rand(2, 3, 64, 64, 64), 2, 2, 256, "cpu")
     ])
-    def test_segmentation_transformer_3d_inference(self, inputs):
-        out = SegmentationTransformer3D(192, 8, 3, 64, 8, 16 ** 3, 0.)(inputs)
+    def test_segmentation_transformer_3d_inference(self, inputs, num_classes, num_heads, embed_dim, device):
+        patch_size = 16
+        num_patches = inputs.shape[2] * inputs.shape[3] * inputs.shape[4] // (patch_size ** 3)
+        out = SegmentationTransformer3D(
+            num_classes=num_classes, 
+            embed_size=embed_dim, 
+            num_heads=num_heads, 
+            input_channels=inputs.shape[1], 
+            channels=8, 
+            patch_size=patch_size,
+            input_shape=num_patches, 
+            dropout=0.1).to(device)(inputs.to(device))
         assert isinstance(out, torch.Tensor)
+        assert out.shape == (inputs.shape[0], 2, inputs.shape[2], inputs.shape[3], inputs.shape[4])
+
+    @pytest.mark.parametrize("features, features_lower, num_deconv_blocks", [
+        (torch.rand(2, 768, 8, 8, 8), torch.rand(2, 512, 16, 16, 16), 1),
+        (torch.rand(2, 768, 8, 8, 8), torch.rand(2, 256, 32, 32, 32), 2),
+        (torch.rand(2, 768, 8, 8, 8), torch.rand(2, 128, 64, 64, 64), 3)
+
+    ])
+    def test_decoder(self, features, features_lower, num_deconv_blocks):
+        decoder = Decoder(num_deconv_blocks)
+        out = decoder(features, features_lower)
+        print(out)
