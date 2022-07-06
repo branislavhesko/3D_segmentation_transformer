@@ -101,11 +101,11 @@ class TestModel:
 
     @pytest.mark.parametrize("inputs, num_classes, num_heads, embed_dim, device", [
         (torch.rand(2, 3, 64, 64, 64), 2, 8, 768, "cpu"),
-        (torch.rand(2, 3, 64, 64, 64), 2, 16, 768, "cuda"),
+        # (torch.rand(2, 3, 64, 64, 64), 2, 16, 768, "cuda"),
         (torch.rand(2, 4, 32, 32, 32), 2, 4, 768, "cpu"),
-        (torch.rand(2, 4, 96, 96, 96), 2, 8, 96, "cuda"),
+        # (torch.rand(2, 4, 96, 96, 96), 2, 8, 96, "cuda"),
         (torch.rand(2, 3, 128, 128, 128), 2, 16, 96, "cpu"),
-        (torch.rand(2, 3, 64, 64, 64), 2, 4, 256, "cuda"),
+        # (torch.rand(2, 3, 64, 64, 64), 2, 4, 256, "cuda"),
         (torch.rand(2, 3, 64, 64, 64), 2, 2, 256, "cpu")
     ])
     def test_segmentation_transformer_3d_inference(self, inputs, num_classes, num_heads, embed_dim, device):

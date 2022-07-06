@@ -123,19 +123,24 @@ class TransformerEncoderLayer(nn.Module):
     
 class Decoder(nn.Module):
     # TODO: make more general
-    FEATURE_NUMBERS = [768, 512, 256, 128, 64]
+    FEATURE_NUMBERS = {
+        "small": [96, 64, 48, 32, 16],
+        "medium": [256, 192, 128, 64, 32],
+        "large": [768, 512, 256, 128, 64]    
+    }
     
-    def __init__(self, num_deconv_blocks) -> None:
+    def __init__(self, num_deconv_blocks, model_size: str = "large") -> None:
         super().__init__()
+        self.feature_numbers = self.FEATURE_NUMBERS[model_size]
         self.deconv_blocks = nn.ModuleList([
-                DeconvLayer(self.FEATURE_NUMBERS[idx], self.FEATURE_NUMBERS[idx + 1], kernel_size=2, stride=2, use_conv=True)
+                DeconvLayer(self.feature_numbers[idx], self.feature_numbers[idx + 1], kernel_size=2, stride=2, use_conv=True)
                 for idx in range(num_deconv_blocks)
         ])
         self.conv_blocks = nn.Sequential(*[
-            ConvBatchNormRelu(self.FEATURE_NUMBERS[num_deconv_blocks] * 2, self.FEATURE_NUMBERS[num_deconv_blocks], padding=1),
-            ConvBatchNormRelu(self.FEATURE_NUMBERS[num_deconv_blocks], self.FEATURE_NUMBERS[num_deconv_blocks + 1], padding=1),
+            ConvBatchNormRelu(self.feature_numbers[num_deconv_blocks] * 2, self.feature_numbers[num_deconv_blocks], padding=1),
+            ConvBatchNormRelu(self.feature_numbers[num_deconv_blocks], self.feature_numbers[num_deconv_blocks + 1], padding=1),
         ])
-        self.final_deconv = nn.ConvTranspose3d(self.FEATURE_NUMBERS[num_deconv_blocks + 1], self.FEATURE_NUMBERS[num_deconv_blocks + 1], 2, 2)
+        self.final_deconv = nn.ConvTranspose3d(self.feature_numbers[num_deconv_blocks + 1], self.feature_numbers[num_deconv_blocks + 1], 2, 2)
         
     def forward(self, features, features_lower):
         for block in self.deconv_blocks:
@@ -147,9 +152,18 @@ class Decoder(nn.Module):
 
 
 class SegmentationTransformer3D(nn.Module):
-    direct_block_channels = 16
+    direct_block_channels = {"small": 16, "medium": 32, "large": 64}
     extraction_layers = {3: "layer1", 6: "layer2", 9: "layer3", 12: "layer4"}
-    
+    last_conv_channels = {
+        "small": 64, 
+        "medium": 192, 
+        "large": 512
+    }
+    final_conv_channels = {
+        "small": (32, 16),
+        "medium": (64, 32),
+        "large": (128, 64)
+    }
     
     def __init__(
             self, 
@@ -163,22 +177,27 @@ class SegmentationTransformer3D(nn.Module):
             dropout
     ) -> None:
         super().__init__()
+        assert embed_size in [768, 256, 96]
+        self.model_size = "large" if embed_size == 768 else "medium" if embed_size == 256 else "small"
         self.encoder = nn.ModuleList([TransformerEncoderLayer(embed_size, num_heads) for _ in range(12)])
         self.positional_encoding = nn.Parameter(torch.rand(1, input_shape, embed_size))
         self.embedding = VoxelEmbedding(input_channels, embed_size, stride=patch_size)
         self.direct_block = nn.Sequential(
-            *[ConvBatchNormRelu(input_channels, self.direct_block_channels, kernel_size=3, stride=1, padding=1),
-              ConvBatchNormRelu(self.direct_block_channels, self.direct_block_channels, kernel_size=3, stride=1, padding=1)])
-        self.decoder3 = Decoder(1)
-        self.decoder2 = Decoder(2)
-        self.decoder1 = Decoder(3)
+            *[ConvBatchNormRelu(input_channels, self.direct_block_channels[self.model_size], kernel_size=3, stride=1, padding=1),
+              ConvBatchNormRelu(
+                  self.direct_block_channels[self.model_size], 
+                  self.direct_block_channels[self.model_size], 
+                  kernel_size=3, stride=1, padding=1)])
+        self.decoder3 = Decoder(1, model_size=self.model_size)
+        self.decoder2 = Decoder(2, model_size=self.model_size)
+        self.decoder1 = Decoder(3, model_size=self.model_size)
         self.patch_size = patch_size
-        self.last_deconv = nn.ConvTranspose3d(embed_size, 512, 2, 2)
+        self.last_deconv = nn.ConvTranspose3d(embed_size, self.last_conv_channels[self.model_size], 2, 2)
         self.final_layer = nn.Sequential(
             *[
-                ConvBatchNormRelu(128, 64, kernel_size=3, stride=1, padding=1),
-                ConvBatchNormRelu(64, 64, kernel_size=3, stride=1, padding=1),
-                nn.Conv3d(64, num_classes, kernel_size=1, stride=1, padding=0),
+                ConvBatchNormRelu(self.final_conv_channels[self.model_size][0], self.final_conv_channels[self.model_size][1], kernel_size=3, stride=1, padding=1),
+                ConvBatchNormRelu(self.final_conv_channels[self.model_size][1], self.final_conv_channels[self.model_size][1], kernel_size=3, stride=1, padding=1),
+                nn.Conv3d(self.final_conv_channels[self.model_size][1], num_classes, kernel_size=1, stride=1, padding=0),
             ]
         )   
         
