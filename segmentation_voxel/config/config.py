@@ -8,7 +8,7 @@ from segmentation_voxel.config.mode import DataMode
 
 @dataclasses.dataclass()
 class TrainingConfig:
-    batch_size: int = 4
+    batch_size: int = 2
     num_workers: int = 4
     shuffle = {
         DataMode.train: True,
@@ -23,13 +23,14 @@ class ModelConfig:
     model: str = "small"
     embed_size: int = 96
     num_heads: int = 8
-    input_channels: int = 3
+    input_channels: int = 1
     patch_size: int = 16
-    input_shape: Tuple[int, int, int] = (3, 128, 128, 128)
+    input_shape: Tuple[int, int, int] = (3, 64, 64, 64)
 
 @dataclasses.dataclass()
 class Config:
-    path: str = "/home/brani/DATASETS/Zebrafish (NucMM-Z)"
+    path: str = "/mnt/d/DATASETS/Zebrafish (NucMM-Z)"
     training_config: TrainingConfig = TrainingConfig()
     model_config: ModelConfig = ModelConfig()
     num_classes: int = 2
+    device: str = "cuda"
