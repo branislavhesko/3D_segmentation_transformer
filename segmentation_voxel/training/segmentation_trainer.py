@@ -1,11 +1,13 @@
 import torch
 from tqdm import tqdm
 from vedo import Volume, show
+from vedo.applications import RayCastPlotter, IsosurfaceBrowser
 
 from segmentation_voxel.config.config import Config
 from segmentation_voxel.config.mode import DataMode
 from segmentation_voxel.data.dataset_nucmm import get_data_loaders
 from segmentation_voxel.modeling.voxel_former import SegmentationTransformer3D
+from segmentation_voxel.utils.metrics import Metrics
 
 
 class SegmentationTrainer:
@@ -31,6 +33,10 @@ class SegmentationTrainer:
             weight_decay=0.0001, 
             amsgrad=True)
         self.loss = torch.nn.CrossEntropyLoss()
+        self.metrics = {
+            DataMode.train: Metrics(classes=self.config.classes),
+            DataMode.eval: Metrics(classes=self.config.classes)
+        }
     
     def train(self):
         
@@ -43,13 +49,19 @@ class SegmentationTrainer:
             self.optimizer.zero_grad()
             image, label = [d.to(self.config.device) for d in data]
             model_output = self.model(image)
+            prediction = model_output.argmax(dim=1)
             loss = self.loss(model_output, label)
             loss.backward()
             self.optimizer.step()
-            loader.set_description(f"Loss: {loss.item():.4f}")
-            vol = Volume(model_output[0, 0, :, :, :].detach().cpu().numpy())
-        show(vol).close()
-    
+            loader.set_description(f"EPOCH: {epoch}, Loss: {loss.item():.4f}")
+            self.metrics[DataMode.train].update(prediction, label)
+        if self.config.training_config.live_visualization:
+            vol = Volume(model_output[0, 0, :, :, :].sigmoid().detach().cpu().numpy())
+            plt = RayCastPlotter(vol, bg='black', bg2='blackboard', axes=7)  # Plotter instance
+            plt.show()
+            
+        print(f"Train Metrics: {self.metrics[DataMode.train]}")
+
     def _validate_epoch(self):
         pass
     
