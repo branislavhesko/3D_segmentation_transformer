@@ -15,7 +15,8 @@ class TrainingConfig:
     learning_rate: float =  0.001
     num_epochs: int = 20
     dropout_probability: float = 0.1
-    live_visualization: bool = False
+    live_visualization: bool = True
+    validation_frequency: int = 1
     
 @dataclasses.dataclass()
 class ModelConfig:

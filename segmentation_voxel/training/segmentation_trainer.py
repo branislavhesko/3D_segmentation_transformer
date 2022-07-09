@@ -1,7 +1,8 @@
 import torch
 from tqdm import tqdm
-from vedo import Volume, show
-from vedo.applications import RayCastPlotter, IsosurfaceBrowser
+import vedo
+from vedo import Volume
+from vedo.applications import RayCastPlotter
 
 from segmentation_voxel.config.config import Config
 from segmentation_voxel.config.mode import DataMode
@@ -42,8 +43,12 @@ class SegmentationTrainer:
         
         for epoch in range(self.config.training_config.num_epochs):
             self._train_epoch(epoch)
+            
+            if epoch % self.config.training_config.validation_frequency == 0:
+                self._validate_epoch(epoch)
         
     def _train_epoch(self, epoch):
+        self.model.train()
         loader = tqdm(self.data_loaders[DataMode.train])
         for index, data in enumerate(loader):
             self.optimizer.zero_grad()
@@ -56,15 +61,32 @@ class SegmentationTrainer:
             loader.set_description(f"EPOCH: {epoch}, Loss: {loss.item():.4f}")
             self.metrics[DataMode.train].update(prediction, label)
         if self.config.training_config.live_visualization:
-            vol = Volume(model_output[0, 0, :, :, :].sigmoid().detach().cpu().numpy())
-            plt = RayCastPlotter(vol, bg='black', bg2='blackboard', axes=7)  # Plotter instance
-            plt.show()
+            self._visualize(model_output)
             
         print(f"Train Metrics: {self.metrics[DataMode.train]}")
 
-    def _validate_epoch(self):
-        pass
-    
+    def _visualize(self, model_output):
+        vedo.close()
+        vol = Volume(model_output[0, 0, :, :, :].sigmoid().detach().cpu().numpy())
+        plt = RayCastPlotter(vol, bg='black', bg2='blackboard', axes=7, interactive=True)  # Plotter instance
+        plt.escaped = False
+        plt.show(interactive=True).close()
+
+    @torch.no_grad()
+    def _validate_epoch(self, epoch):
+        self.model.eval()
+        loader = tqdm(self.data_loaders[DataMode.eval])
+        
+        for index, data in enumerate(loader):
+            volume, label = [d.to(self.config.device) for d in data]
+            model_output = self.model(volume)
+            prediction = model_output.argmax(dim=1)
+            loss = self.loss(model_output, label)
+            self.metrics[DataMode.eval].update(prediction, label)
+        
+        if self.config.training_config.live_visualization:
+            self._visualize(model_output)
+        print(f"Validation Metrics: {self.metrics[DataMode.eval]}")    
 
 if __name__ == "__main__":
     SegmentationTrainer(Config()).train()
