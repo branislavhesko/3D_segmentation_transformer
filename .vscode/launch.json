@@ -14,6 +14,17 @@
             "env": {
                 "PYTHONPATH": "${workspaceRoot}"
             }
+        },
+        {
+            "name": "TRAIN",
+            "type": "python",
+            "request": "launch",
+            "program": "${workspaceFolder}/segmentation_voxel/training/segmentation_trainer.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}"
+            }
         }
     ]
 }

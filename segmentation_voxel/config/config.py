@@ -17,7 +17,7 @@ class TrainingConfig:
     dropout_probability: float = 0.1
     live_visualization: bool = True
     validation_frequency: int = 1
-    
+
 @dataclasses.dataclass()
 class ModelConfig:
     model: str = "small"
@@ -29,7 +29,7 @@ class ModelConfig:
 
 @dataclasses.dataclass()
 class Config:
-    path: str = "/mnt/d/DATASETS/Zebrafish (NucMM-Z)"
+    path: str = "/media/brani/DATA/DATASETS/Zebrafish (NucMM-Z)"
     training_config: TrainingConfig = TrainingConfig()
     model_config: ModelConfig = ModelConfig()
     num_classes: int = 2
