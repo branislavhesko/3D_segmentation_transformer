@@ -170,7 +170,7 @@ class TransformerDecoder(nn.Module):
         return self.classification_layer(queries.mean(dim=1))
 
 
-class SegmentationTransformer3D(nn.Module):
+class InstanceSegmentationFormer3D(nn.Module):
     direct_block_channels = {"small": 16, "medium": 32, "large": 64}
     extraction_layers = {3: "layer1", 6: "layer2", 9: "layer3", 12: "layer4"}
     last_conv_channels = {
@@ -250,9 +250,9 @@ class SegmentationTransformer3D(nn.Module):
 
 
 if __name__ == "__main__":
-    model = SegmentationTransformer3D(
+    model = InstanceSegmentationFormer3D(
         2, 50, 256, 8, 1, None, 16, (64, 64, 64), 0.1
-    ).cuda()
+    )
 
     with torch.no_grad():
-        print(model(torch.rand(20, 1, 64, 64, 64).cuda())[0].shape)
+        print(model(torch.rand(20, 1, 64, 64, 64))[0].shape)
