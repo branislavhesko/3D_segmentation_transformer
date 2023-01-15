@@ -18,5 +18,6 @@ class HungarianMatcher(torch.nn.Module):
         for batch in range(cost_matrix.shape[0]):
             cm = 1 - cost_matrix[batch]
             rows, cols = linear_sum_assignment(cm.cpu().numpy())
-            matches.append(torch.stack([torch.tensor(rows), torch.tensor(cols)], dim=1))
+            costs = cost_matrix[batch][rows, cols]
+            matches.append(torch.stack([torch.tensor(rows), torch.tensor(cols), costs], dim=1))
         return matches
