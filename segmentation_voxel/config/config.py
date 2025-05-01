@@ -30,8 +30,8 @@ class ModelConfig:
 @dataclasses.dataclass()
 class Config:
     path: str = "/media/brani/DATA/DATASETS/Zebrafish (NucMM-Z)"
-    training_config: TrainingConfig = TrainingConfig()
-    model_config: ModelConfig = ModelConfig()
+    training_config: TrainingConfig = dataclasses.field(default_factory=TrainingConfig)
+    model_config: ModelConfig = dataclasses.field(default_factory=ModelConfig)
     num_classes: int = 2
     classes: Tuple[str] = ("background", "nucleus")
     device: str = "cuda"
